@@ -16,7 +16,7 @@ sandbox/
 ├── .env                    persoenliche Einstellungen (nicht ins Git)
 ├── .env.example            Vorlage mit allen Schaltern
 ├── docker/
-│   ├── Dockerfile          Image: Debian + Go/Node/Python + opencode
+│   ├── Dockerfile          Image: Debian + Go/Node/Python/.NET + opencode
 │   ├── entrypoint.sh       Startlogik (Git-Identitaet, Verzeichnisse)
 │   └── bashrc.d/sandbox.sh Begruessung und Prompt im Container
 ├── .gitattributes          haelt LF-Zeilenenden fuer den Container
@@ -307,8 +307,10 @@ Sandbox-Effekt. Alles ausserhalb bleibt unerreichbar.
 
 Debian 12 (slim), Go, Node.js 22, Python 3, dazu git, GitHub CLI, ripgrep, fd,
 jq, tmux, build-essential, der GitHub-MCP-Server sowie opencode und
-Claude Code. Rust laesst sich mit `INSTALL_RUST=true`
-zuschalten, einzelne Toolchains mit `INSTALL_NODE=false` usw. abschalten.
+Claude Code. Rust laesst sich mit `INSTALL_RUST=true` zuschalten, das .NET SDK
+mit `INSTALL_DOTNET=true` (ohne `DOTNET_VERSION` in der neuesten stabilen
+Version). Einzelne Toolchains lassen sich mit `INSTALL_NODE=false` usw.
+abschalten.
 Zusaetzliche Debian-Pakete kommen ueber `EXTRA_APT_PACKAGES` ins Image.
 Nach jeder Aenderung an diesen Schaltern: `./sandbox.sh rebuild`.
 
