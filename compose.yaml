@@ -15,6 +15,8 @@ services:
         INSTALL_GO: ${INSTALL_GO:-true}
         GO_VERSION: ${GO_VERSION:-}
         INSTALL_RUST: ${INSTALL_RUST:-false}
+        INSTALL_DOTNET: ${INSTALL_DOTNET:-false}
+        DOTNET_VERSION: ${DOTNET_VERSION:-}
         ENABLE_SUDO: ${ENABLE_SUDO:-true}
         INSTALL_OPENCODE: ${INSTALL_OPENCODE:-true}
         OPENCODE_VERSION: ${OPENCODE_VERSION:-}

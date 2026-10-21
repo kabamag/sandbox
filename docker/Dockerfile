@@ -23,6 +23,8 @@ ARG INSTALL_PYTHON=true
 ARG INSTALL_GO=true
 ARG GO_VERSION=
 ARG INSTALL_RUST=false
+ARG INSTALL_DOTNET=false
+ARG DOTNET_VERSION=
 ARG ENABLE_SUDO=true
 ARG INSTALL_OPENCODE=true
 ARG OPENCODE_VERSION=
@@ -107,6 +109,33 @@ RUN set -eux; \
       curl -fsSL https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal; \
       chmod -R a+rwX "${CARGO_HOME}" "${RUSTUP_HOME}"; \
       rustc --version; \
+    fi
+
+# ---------------------------------------------------------------- .NET SDK (optional)
+# Ohne DOTNET_VERSION wird das neueste stabile SDK (GA) aus der offiziellen
+# Release-Liste ermittelt - unabhaengig davon, ob LTS oder STS.
+# Das SDK liegt unter /usr/local/dotnet, der Aufruf laeuft ueber den Symlink.
+ENV DOTNET_ROOT=/usr/local/dotnet \
+    DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+    DOTNET_NOLOGO=1
+RUN set -eux; \
+    if [ "${INSTALL_DOTNET}" = "true" ]; then \
+      apt-get update; \
+      apt-get install -y --no-install-recommends libicu72 libssl3 zlib1g; \
+      rm -rf /var/lib/apt/lists/*; \
+      curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh; \
+      chmod +x /tmp/dotnet-install.sh; \
+      ver="${DOTNET_VERSION}"; \
+      if [ -z "${ver}" ]; then \
+        ver="$(curl -fsSL https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/releases-index.json \
+          | jq -r '[."releases-index"[] | select(."support-phase" != "eol") | select(."latest-sdk" | test("-") | not)][0]."latest-sdk"')"; \
+      fi; \
+      [ -n "${ver}" ] && [ "${ver}" != "null" ] || { echo "Kein stabiles .NET-SDK gefunden" >&2; exit 1; }; \
+      /tmp/dotnet-install.sh --version "${ver}" --install-dir /usr/local/dotnet --no-path; \
+      rm -f /tmp/dotnet-install.sh; \
+      ln -sf /usr/local/dotnet/dotnet /usr/local/bin/dotnet; \
+      chmod -R a+rX /usr/local/dotnet; \
+      dotnet --version; \
     fi
 
 # ---------------------------------------------------------------- opencode
