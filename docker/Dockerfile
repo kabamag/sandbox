@@ -30,6 +30,7 @@ ARG INSTALL_OPENCODE=true
 ARG OPENCODE_VERSION=
 ARG INSTALL_CLAUDE=true
 ARG CLAUDE_CODE_VERSION=
+ARG INSTALL_HERDR_TUI=false
 ARG EXTRA_APT_PACKAGES=
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -169,6 +170,20 @@ RUN set -eux; \
       claude --version; \
     fi
 
+# ---------------------------------------------------------------- herdr tui (optional)
+# Prebuiltes Binary ueber das offizielle Install-Skript (benoetigt curl + gawk);
+# keine Rust-Toolchain noetig. Wird unter /usr/local/bin installiert und steht
+# allen Nutzern zur Verfuegung.
+RUN set -eux; \
+    if [ "${INSTALL_HERDR_TUI}" = "true" ]; then \
+      apt-get update; \
+      apt-get install -y --no-install-recommends gawk; \
+      rm -rf /var/lib/apt/lists/*; \
+      export HERDR_INSTALL_DIR=/usr/local/bin; \
+      curl -fsSL https://herdr.dev/install.sh | sh; \
+      herdr --version; \
+    fi
+
 # ---------------------------------------------------------------- GitHub-MCP-Server
 COPY --from=mcpbuild /go/bin/github-mcp-server /usr/local/bin/github-mcp-server
 RUN chmod 0755 /usr/local/bin/github-mcp-server
@@ -199,6 +214,30 @@ RUN set -eux; \
              /home/dev/.cache \
              /home/dev/go/pkg; \
     chown -R "${USER_UID}:${USER_GID}" /work /home/dev /opt/agent-commands
+
+# .bashrc fuer den dev User (wird bei interaktiven Nicht-Login-Shells geladen,
+# im Gegensatz zu /etc/profile.d/*)
+COPY --chown="${USER_UID}:${USER_GID}" bashrc.d/dev-bashrc /home/dev/.bashrc
+
+# ~/.profile fuer sh/dash Login-Shells (herdr koennte sh statt bash starten)
+COPY --chown="${USER_UID}:${USER_GID}" bashrc.d/dev-profile /home/dev/.profile
+
+# Sandbox-Prompt fuer alle interaktiven bash-Shells. /etc/bash.bashrc wird auf
+# Debian bei jeder interaktiven bash geladen (auch bei Non-Login-Shells wie
+# 'docker exec ... bash').
+COPY bashrc.d/bash.bashrc-sandbox /etc/bash.bashrc.d/sandbox-prompt
+RUN echo 'if [ -f /etc/bash.bashrc.d/sandbox-prompt ]; then . /etc/bash.bashrc.d/sandbox-prompt; fi' >> /etc/bash.bashrc
+
+# Ebenfalls direkt in /etc/profile eintragen, damit der Prompt auch bei
+# Login-Shells (z. B. 'docker compose exec ... bash -l' ueber sandbox.ps1)
+# korrekt gesetzt wird. Zudem SHELL auf bash setzen, damit herdr (falls es
+# $SHELL ausliest) moeglichst bash statt sh/dash startet.
+RUN echo 'export PS1="\[\e]0;\u@\h: \w\a\]\[\033[01;32m\]sandbox\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ "' >> /etc/profile \
+ && echo 'export SHELL=/bin/bash' >> /etc/profile
+
+# Kopierte Konfigurationsdateien auf LF-Zeilenumbrueche normalisieren
+# (Windows-CRLF wuerde die Escape-Sequenzen im Prompt zerstoeren).
+RUN sed -i 's/\r$//' /home/dev/.bashrc /home/dev/.profile /etc/bash.bashrc.d/sandbox-prompt /etc/profile 2>/dev/null || true
 
 ENV HOME=/home/dev \
     GOPATH=/home/dev/go \
