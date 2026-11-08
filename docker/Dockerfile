@@ -5,14 +5,14 @@
 # Der GitHub-MCP-Server wird aus dem Quelltext uebersetzt und als einzelnes
 # Binary uebernommen. So braucht die Sandbox keinen Docker-Socket.
 ARG GITHUB_MCP_VERSION=latest
-FROM golang:1-bookworm AS mcpbuild
+FROM golang:1-trixie AS mcpbuild
 ARG GITHUB_MCP_VERSION
 ENV CGO_ENABLED=0
 RUN go install "github.com/github/github-mcp-server/cmd/github-mcp-server@${GITHUB_MCP_VERSION}" \
  && test -x /go/bin/github-mcp-server
 
 # ---------------------------------------------------------------- Sandbox
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 ARG TZ=Europe/Berlin
 ARG USER_UID=1000
@@ -40,7 +40,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # ---------------------------------------------------------------- Basiswerkzeug
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates curl wget gnupg \
-      git git-lfs openssh-client \
+      git git-lfs lazygit openssh-client \
       bash-completion less nano vim-tiny tmux \
       procps psmisc htop lsof \
       ripgrep jq unzip zip xz-utils tar file tree \
@@ -119,23 +119,14 @@ RUN set -eux; \
 ENV DOTNET_ROOT=/usr/local/dotnet \
     DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_NOLOGO=1
+
 RUN set -eux; \
     if [ "${INSTALL_DOTNET}" = "true" ]; then \
+      wget "https://packages.microsoft.com/config/debian/13/packages-microsoft-prod.deb" -O packages-microsoft-prod.deb; \
+      dpkg -i packages-microsoft-prod.deb; \
+      rm packages-microsoft-prod.deb; \
       apt-get update; \
-      apt-get install -y --no-install-recommends libicu72 libssl3 zlib1g; \
-      rm -rf /var/lib/apt/lists/*; \
-      curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh; \
-      chmod +x /tmp/dotnet-install.sh; \
-      ver="${DOTNET_VERSION}"; \
-      if [ -z "${ver}" ]; then \
-        ver="$(curl -fsSL https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/releases-index.json \
-          | jq -r '[."releases-index"[] | select(."support-phase" != "eol") | select(."latest-sdk" | test("-") | not)][0]."latest-sdk"')"; \
-      fi; \
-      [ -n "${ver}" ] && [ "${ver}" != "null" ] || { echo "Kein stabiles .NET-SDK gefunden" >&2; exit 1; }; \
-      /tmp/dotnet-install.sh --version "${ver}" --install-dir /usr/local/dotnet --no-path; \
-      rm -f /tmp/dotnet-install.sh; \
-      ln -sf /usr/local/dotnet/dotnet /usr/local/bin/dotnet; \
-      chmod -R a+rX /usr/local/dotnet; \
+      apt-get install -y dotnet-sdk-10.0; \
       dotnet --version; \
     fi
 
