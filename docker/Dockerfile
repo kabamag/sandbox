@@ -31,6 +31,8 @@ ARG OPENCODE_VERSION=
 ARG INSTALL_CLAUDE=true
 ARG CLAUDE_CODE_VERSION=
 ARG INSTALL_HERDR_TUI=false
+ARG INSTALL_STARSHIP=true
+ARG STARSHIP_VERSION=
 ARG EXTRA_APT_PACKAGES=
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -175,6 +177,17 @@ RUN set -eux; \
       herdr --version; \
     fi
 
+# ---------------------------------------------------------------- Starship
+# Einzelnes Binary ueber das offizielle Install-Skript; landet in /usr/local/bin
+# und wird von den bash-Konfigurationen als Prompt geladen.
+RUN set -eux; \
+    if [ "${INSTALL_STARSHIP}" = "true" ]; then \
+      set -- --yes --bin-dir /usr/local/bin; \
+      if [ -n "${STARSHIP_VERSION}" ]; then set -- "$@" --version "${STARSHIP_VERSION}"; fi; \
+      curl -fsSL https://starship.rs/install.sh | sh -s -- "$@"; \
+      starship --version; \
+    fi
+
 # ---------------------------------------------------------------- GitHub-MCP-Server
 COPY --from=mcpbuild /go/bin/github-mcp-server /usr/local/bin/github-mcp-server
 RUN chmod 0755 /usr/local/bin/github-mcp-server
@@ -217,18 +230,21 @@ COPY --chown="${USER_UID}:${USER_GID}" bashrc.d/dev-profile /home/dev/.profile
 # Debian bei jeder interaktiven bash geladen (auch bei Non-Login-Shells wie
 # 'docker exec ... bash').
 COPY bashrc.d/bash.bashrc-sandbox /etc/bash.bashrc.d/sandbox-prompt
-RUN echo 'if [ -f /etc/bash.bashrc.d/sandbox-prompt ]; then . /etc/bash.bashrc.d/sandbox-prompt; fi' >> /etc/bash.bashrc
+COPY bashrc.d/starship-prompt.sh /etc/bash.bashrc.d/starship-prompt
+RUN echo 'if [ -f /etc/bash.bashrc.d/sandbox-prompt ]; then . /etc/bash.bashrc.d/sandbox-prompt; fi' >> /etc/bash.bashrc \
+ && echo 'if [ -f /etc/bash.bashrc.d/starship-prompt ]; then . /etc/bash.bashrc.d/starship-prompt; fi' >> /etc/bash.bashrc
 
 # Ebenfalls direkt in /etc/profile eintragen, damit der Prompt auch bei
 # Login-Shells (z. B. 'docker compose exec ... bash -l' ueber sandbox.ps1)
 # korrekt gesetzt wird. Zudem SHELL auf bash setzen, damit herdr (falls es
 # $SHELL ausliest) moeglichst bash statt sh/dash startet.
 RUN echo 'export PS1="\[\e]0;\u@\h: \w\a\]\[\033[01;32m\]sandbox\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ "' >> /etc/profile \
- && echo 'export SHELL=/bin/bash' >> /etc/profile
+ && echo 'export SHELL=/bin/bash' >> /etc/profile \
+ && echo 'if [ -f /etc/bash.bashrc.d/starship-prompt ]; then . /etc/bash.bashrc.d/starship-prompt; fi' >> /etc/profile
 
 # Kopierte Konfigurationsdateien auf LF-Zeilenumbrueche normalisieren
 # (Windows-CRLF wuerde die Escape-Sequenzen im Prompt zerstoeren).
-RUN sed -i 's/\r$//' /home/dev/.bashrc /home/dev/.profile /etc/bash.bashrc.d/sandbox-prompt /etc/profile 2>/dev/null || true
+RUN sed -i 's/\r$//' /home/dev/.bashrc /home/dev/.profile /etc/bash.bashrc.d/sandbox-prompt /etc/bash.bashrc.d/starship-prompt /etc/profile 2>/dev/null || true
 
 ENV HOME=/home/dev \
     GOPATH=/home/dev/go \

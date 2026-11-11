@@ -18,7 +18,7 @@ sandbox/
 ├── docker/
 │   ├── Dockerfile          Image: Debian + Go/Node/Python/.NET + opencode
 │   ├── entrypoint.sh       Startlogik (Git-Identitaet, Verzeichnisse)
-│   └── bashrc.d/sandbox.sh Begruessung und Prompt im Container
+│   └── bashrc.d/           Shell-Konfiguration (Prompt inkl. Starship)
 ├── .gitattributes          haelt LF-Zeilenenden fuer den Container
 ├── config/
 │   ├── commands/           die geteilten Befehle - eine Quelle fuer beide
@@ -307,7 +307,9 @@ Sandbox-Effekt. Alles ausserhalb bleibt unerreichbar.
 
 Debian 12 (slim), Go, Node.js 22, Python 3, dazu git, GitHub CLI, ripgrep, fd,
 jq, tmux, build-essential, der GitHub-MCP-Server sowie opencode und
-Claude Code. Rust laesst sich mit `INSTALL_RUST=true` zuschalten, das .NET SDK
+Claude Code. Als Prompt dient [Starship](https://starship.rs); abschalten mit
+`INSTALL_STARSHIP=false`, eine Version fixieren mit `STARSHIP_VERSION=v1.27.0`.
+Rust laesst sich mit `INSTALL_RUST=true` zuschalten, das .NET SDK
 mit `INSTALL_DOTNET=true` (ohne `DOTNET_VERSION` in der neuesten stabilen
 Version). Einzelne Toolchains lassen sich mit `INSTALL_NODE=false` usw.
 abschalten.
